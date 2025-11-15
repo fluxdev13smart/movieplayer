@@ -9,6 +9,25 @@ const Index = () => {
   const [playingUrl, setPlayingUrl] = useState("");
   const { toast } = useToast();
 
+  const getYouTubeVideoId = (url: string): string | null => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+      /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    return null;
+  };
+
+  const isYouTubeUrl = (url: string): boolean => {
+    return getYouTubeVideoId(url) !== null;
+  };
+
   useEffect(() => {
     // Check for shared video in URL params
     const params = new URLSearchParams(window.location.search);
@@ -97,15 +116,25 @@ const Index = () => {
 
         {playingUrl && (
           <div className="w-full aspect-video bg-card rounded-lg overflow-hidden border border-border">
-            <video
-              key={playingUrl}
-              controls
-              autoPlay
-              className="w-full h-full"
-              src={playingUrl}
-            >
-              Your browser does not support the video tag.
-            </video>
+            {isYouTubeUrl(playingUrl) ? (
+              <iframe
+                key={playingUrl}
+                src={`https://www.youtube.com/embed/${getYouTubeVideoId(playingUrl)}?autoplay=1`}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <video
+                key={playingUrl}
+                controls
+                autoPlay
+                className="w-full h-full"
+                src={playingUrl}
+              >
+                Your browser does not support the video tag.
+              </video>
+            )}
           </div>
         )}
       </div>
