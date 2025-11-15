@@ -101,8 +101,12 @@ const Index = () => {
               key={playingUrl}
               controls
               autoPlay
+              preload="auto"
+              playsInline
+              controlsList="nodownload"
               className="w-full h-full"
               src={playingUrl}
+              style={{ objectFit: 'contain' }}
             >
               Your browser does not support the video tag.
             </video>
