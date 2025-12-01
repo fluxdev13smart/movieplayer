@@ -81,12 +81,12 @@ All colors MUST be HSL.
   letter-spacing: 3px;
   text-align: center;
   transform: translate(-50%, -50%);
-  color: white;
+  color: black;
   transition: all 2s ease;
 }
 
 .play-button:hover span {
-  color: black;
+  color: white;
 }
 
 .play-button:before {
@@ -237,154 +237,6 @@ All colors MUST be HSL.
   opacity: 1;
   transform: translateY(30px);
   transition-duration: 0.3s;
-}
-
-/* Watch Later Button */
-.watch-later-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.watch-later-text {
-  color: white;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.face {
-  position: relative;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  outline: 3px solid #333;
-  background: repeating-radial-gradient(circle at 50% 50%, 
-  rgba(200,200,200,.2) 0%, rgba(200,200,200,.2) 2%, 
-  transparent 2%, transparent 3%, rgba(200,200,200,.2) 3%, 
-  transparent 3%), conic-gradient(white 0%, silver 10%, 
-  white 35%, silver 45%, white 60%, silver 70%, 
-  white 80%, silver 95%, white 100%);
-  box-shadow: inset 0 0 10px #0007;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.face:hover {
-  transform: scale(1.1);
-  outline-color: hsl(var(--accent));
-}
-
-.hour {
-  position: absolute;
-  width: 2px;
-  height: 20px;
-  background: #aaa;
-  left: 29px;
-  top: 14px;
-  border-radius: 2px 2px 1px 1px;
-  transform-origin: 1px 16px;
-  box-shadow: 0 0 3px #0005, inset 1px 2px 0px #333, inset -1px -2px 0px #333;
-  z-index: 1;
-  animation: watch-hour 432s linear infinite;
-}
-
-.minute {
-  position: absolute;
-  width: 1.5px;
-  height: 26px;
-  background: #aaa;
-  left: 29.5px;
-  top: 8px;
-  border-radius: 2px 2px 1px 1px;
-  transform-origin: 0.75px 22px;
-  box-shadow: 0 0 3px #0005, inset 1px 2px 0px #333, inset -1px -2px 0px #333;
-  z-index: 2;
-  animation: watch-minute 36s linear infinite;
-}
-
-.second {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  background: red;
-  left: 28px;
-  top: 28px;
-  border-radius: 50%;
-  border: 1px solid #eee;
-  z-index: 3;
-  animation: watch-second .6s steps(60, end) 0s infinite;
-}
-
-.second::before {
-  content: "";
-  position: absolute;
-  width: 1px;
-  height: 28px;
-  left: 1px;
-  bottom: -3px;
-  background: red;
-  border-radius: 2px;
-  box-shadow: 2px 0 1px rgba(128, 128, 128, 0.2);
-}
-
-.second::after {
-  content: "";
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  left: 1px;
-  top: 1px;
-  background: #555;
-  border-radius: 50%;
-}
-
-.v-index {
-  position: absolute;
-  color: #333;
-  font-size: 8px;
-  left: 27.5px;
-  top: -1px;
-  text-shadow: 0 52px 0 #333;
-  z-index: 1;
-}
-
-.h-index {
-  position: absolute;
-  color: #333;
-  font-size: 8px;
-  top: 24px;
-  left: 2px;
-  transform: rotate(-90deg);
-  text-shadow: 0 52px 0 #333;
-  z-index: 1;
-}
-
-@keyframes watch-hour {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes watch-minute {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes watch-second {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
 }
 
 @layer base {
