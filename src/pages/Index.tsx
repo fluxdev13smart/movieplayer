@@ -94,8 +94,23 @@ const Index = () => {
           </div>
 
           <button onClick={handlePlay} className="play-button">
-            <span>PLAY NOW</span>
+            <span>PLAY</span>
           </button>
+
+          <div className="watch-later-container">
+            <div className="face">
+              <p className="v-index">II</p>
+              <p className="h-index">II</p>
+              <div className="hand">
+                <div className="hand">
+                  <div className="hour"></div>
+                  <div className="minute"></div>
+                  <div className="second"></div>
+                </div>
+              </div>
+            </div>
+            <span className="watch-later-text">Watch Later</span>
+          </div>
 
           <button onClick={handleClear} className="delete-button" title="Clear">
             <svg viewBox="0 0 448 512" className="delete-icon">
