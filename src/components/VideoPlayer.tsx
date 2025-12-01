@@ -23,7 +23,14 @@ const VideoPlayer = ({ videoUrl, isYouTube, youtubeId, isSubtitle }: VideoPlayer
     // Clear subtitles when video changes
     setSubtitles([]);
     setActiveSubtitle(null);
-  }, [videoUrl]);
+    
+    // Auto-play video when URL changes
+    if (videoRef.current && !isYouTube && !isSubtitle) {
+      videoRef.current.play().catch((error) => {
+        console.log("Autoplay prevented:", error);
+      });
+    }
+  }, [videoUrl, isYouTube, isSubtitle]);
 
   const handleSubtitleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -89,6 +96,11 @@ const VideoPlayer = ({ videoUrl, isYouTube, youtubeId, isSubtitle }: VideoPlayer
           className="w-full h-full"
           src={videoUrl}
           crossOrigin="anonymous"
+          onLoadedData={(e) => {
+            e.currentTarget.play().catch((error) => {
+              console.log("Autoplay prevented:", error);
+            });
+          }}
         >
           {subtitles.map((subtitle) => (
             <track
