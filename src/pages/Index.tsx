@@ -1,10 +1,19 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import Navigation from "@/components/Navigation";
+import VideoPlayer from "@/components/VideoPlayer";
+import { SkipForward, List, Plus } from "lucide-react";
 
 const Index = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [videoUrl, setVideoUrl] = useState("");
   const [playingUrl, setPlayingUrl] = useState("");
   const [watchLater, setWatchLater] = useState<string[]>([]);
+  const [playlistVideos, setPlaylistVideos] = useState<string[]>([]);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [playlistId, setPlaylistId] = useState<string | null>(null);
+  const [showAddToPlaylist, setShowAddToPlaylist] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -12,7 +21,30 @@ const Index = () => {
     if (saved) {
       setWatchLater(JSON.parse(saved));
     }
-  }, []);
+
+    // Check for shared video or playlist in URL params
+    const sharedUrl = searchParams.get("v");
+    const playlistParam = searchParams.get("playlist");
+    
+    if (sharedUrl) {
+      const decodedUrl = decodeURIComponent(sharedUrl);
+      setVideoUrl(decodedUrl);
+      setPlayingUrl(decodedUrl);
+    }
+
+    // Load playlist if present
+    if (playlistParam) {
+      const savedVideos = sessionStorage.getItem("playlistVideos");
+      const savedIndex = sessionStorage.getItem("currentVideoIndex");
+      
+      if (savedVideos) {
+        const videos = JSON.parse(savedVideos);
+        setPlaylistVideos(videos);
+        setPlaylistId(playlistParam);
+        setCurrentVideoIndex(savedIndex ? parseInt(savedIndex) : 0);
+      }
+    }
+  }, [searchParams]);
 
   const getYouTubeVideoId = (url: string): string | null => {
     const patterns = [
@@ -37,16 +69,6 @@ const Index = () => {
     return url.toLowerCase().endsWith('.srt') || url.toLowerCase().includes('.srt');
   };
 
-  useEffect(() => {
-    // Check for shared video in URL params
-    const params = new URLSearchParams(window.location.search);
-    const sharedUrl = params.get("v");
-    if (sharedUrl) {
-      const decodedUrl = decodeURIComponent(sharedUrl);
-      setVideoUrl(decodedUrl);
-      setPlayingUrl(decodedUrl);
-    }
-  }, []);
 
   const handlePlay = () => {
     if (videoUrl.trim()) {
@@ -97,6 +119,14 @@ const Index = () => {
       return;
     }
 
+    if (watchLater.includes(playingUrl)) {
+      toast({
+        title: "Already saved",
+        description: "This video is already in your Watch Later list",
+      });
+      return;
+    }
+
     const updated = [...watchLater, playingUrl];
     setWatchLater(updated);
     localStorage.setItem("watchLater", JSON.stringify(updated));
@@ -107,9 +137,67 @@ const Index = () => {
     });
   };
 
+  const playNextInPlaylist = () => {
+    if (!playlistVideos.length || currentVideoIndex >= playlistVideos.length - 1) {
+      toast({
+        title: "End of playlist",
+        description: "You've reached the last video",
+      });
+      return;
+    }
+
+    const nextIndex = currentVideoIndex + 1;
+    const nextVideo = playlistVideos[nextIndex];
+    
+    setCurrentVideoIndex(nextIndex);
+    setPlayingUrl(nextVideo);
+    setVideoUrl(nextVideo);
+    sessionStorage.setItem("currentVideoIndex", nextIndex.toString());
+    
+    setSearchParams({ v: nextVideo, playlist: playlistId || "" });
+  };
+
+  const exitPlaylist = () => {
+    setPlaylistVideos([]);
+    setPlaylistId(null);
+    setCurrentVideoIndex(0);
+    sessionStorage.removeItem("activePlaylist");
+    sessionStorage.removeItem("playlistVideos");
+    sessionStorage.removeItem("currentVideoIndex");
+    setSearchParams({});
+  };
+
+  const addToPlaylist = (playlistId: string) => {
+    if (!playingUrl) return;
+
+    const saved = localStorage.getItem("playlists");
+    if (!saved) return;
+
+    const playlists = JSON.parse(saved);
+    const updated = playlists.map((p: any) => {
+      if (p.id === playlistId) {
+        if (!p.videos.includes(playingUrl)) {
+          return { ...p, videos: [...p.videos, playingUrl] };
+        }
+      }
+      return p;
+    });
+
+    localStorage.setItem("playlists", JSON.stringify(updated));
+    setShowAddToPlaylist(false);
+
+    toast({
+      title: "Added to playlist",
+      description: "Video has been added to the playlist",
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl space-y-6 animate-fade-in">
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      
+      <div className="pt-24 px-4 pb-8 flex items-center justify-center">
+        <div className="w-full max-w-4xl space-y-6 animate-fade-in">
         <div className="flex gap-4 items-center">
           <div className="input-group">
             <input
@@ -154,44 +242,92 @@ const Index = () => {
             </div>
             <span className="watch-later-text">Watch Later</span>
           </div>
+
+          {playingUrl && (
+            <div className="relative">
+              <button
+                onClick={() => setShowAddToPlaylist(!showAddToPlaylist)}
+                className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+                title="Add to Playlist"
+              >
+                <Plus size={16} />
+                Playlist
+              </button>
+
+              {showAddToPlaylist && (
+                <div className="absolute top-full right-0 mt-2 w-64 bg-card border border-border rounded-lg shadow-lg p-2 z-50 animate-fade-in">
+                  <p className="text-xs text-muted-foreground px-2 py-1">Add to playlist:</p>
+                  {(() => {
+                    const saved = localStorage.getItem("playlists");
+                    const playlists = saved ? JSON.parse(saved) : [];
+                    
+                    if (playlists.length === 0) {
+                      return (
+                        <p className="text-sm text-muted-foreground px-2 py-2">
+                          No playlists yet. Create one first!
+                        </p>
+                      );
+                    }
+
+                    return playlists.map((playlist: any) => (
+                      <button
+                        key={playlist.id}
+                        onClick={() => addToPlaylist(playlist.id)}
+                        className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground rounded transition-colors"
+                      >
+                        {playlist.name}
+                      </button>
+                    ));
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {playingUrl && (
-          <div className="w-full aspect-video bg-card rounded-lg overflow-hidden border border-border animate-scale-in">
-            {isSubtitleFile(playingUrl) ? (
-              <div className="w-full h-full flex items-center justify-center p-8 text-foreground">
-                <div className="text-center space-y-4">
-                  <p className="text-xl">Subtitle file detected</p>
-                  <a 
-                    href={playingUrl} 
-                    download 
-                    className="inline-block px-6 py-3 bg-accent text-accent-foreground rounded-lg hover:opacity-90 transition-opacity"
+          <div className="space-y-4">
+            {playlistId && (
+              <div className="bg-card border border-border rounded-lg p-4 flex items-center justify-between animate-fade-in">
+                <div className="flex items-center gap-3">
+                  <List className="text-accent" size={20} />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Playing from playlist</p>
+                    <p className="text-foreground font-medium">
+                      Video {currentVideoIndex + 1} of {playlistVideos.length}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={playNextInPlaylist}
+                    disabled={currentVideoIndex >= playlistVideos.length - 1}
+                    className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Download Subtitle
-                  </a>
+                    <SkipForward size={16} />
+                    Next
+                  </button>
+                  <button
+                    onClick={exitPlaylist}
+                    className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+                  >
+                    Exit Playlist
+                  </button>
                 </div>
               </div>
-            ) : isYouTubeUrl(playingUrl) ? (
-              <iframe
-                key={playingUrl}
-                src={`https://www.youtube.com/embed/${getYouTubeVideoId(playingUrl)}?autoplay=1`}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            ) : (
-              <video
-                key={playingUrl}
-                controls
-                autoPlay
-                className="w-full h-full"
-                src={playingUrl}
-              >
-                Your browser does not support the video tag.
-              </video>
             )}
+
+            <div className="w-full aspect-video bg-card rounded-lg overflow-hidden border border-border animate-scale-in">
+              <VideoPlayer
+                videoUrl={playingUrl}
+                isYouTube={isYouTubeUrl(playingUrl)}
+                youtubeId={getYouTubeVideoId(playingUrl)}
+                isSubtitle={isSubtitleFile(playingUrl)}
+              />
+            </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
