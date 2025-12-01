@@ -4,7 +4,15 @@ import { useToast } from "@/hooks/use-toast";
 const Index = () => {
   const [videoUrl, setVideoUrl] = useState("");
   const [playingUrl, setPlayingUrl] = useState("");
+  const [watchLater, setWatchLater] = useState<string[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const saved = localStorage.getItem("watchLater");
+    if (saved) {
+      setWatchLater(JSON.parse(saved));
+    }
+  }, []);
 
   const getYouTubeVideoId = (url: string): string | null => {
     const patterns = [
@@ -23,6 +31,10 @@ const Index = () => {
 
   const isYouTubeUrl = (url: string): boolean => {
     return getYouTubeVideoId(url) !== null;
+  };
+
+  const isSubtitleFile = (url: string): boolean => {
+    return url.toLowerCase().endsWith('.srt') || url.toLowerCase().includes('.srt');
   };
 
   useEffect(() => {
@@ -75,6 +87,26 @@ const Index = () => {
     }
   };
 
+  const handleWatchLater = () => {
+    if (!playingUrl) {
+      toast({
+        title: "No video to save",
+        description: "Please load a video first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updated = [...watchLater, playingUrl];
+    setWatchLater(updated);
+    localStorage.setItem("watchLater", JSON.stringify(updated));
+    
+    toast({
+      title: "Saved to Watch Later",
+      description: "Video added to your list",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-4xl space-y-6 animate-fade-in">
@@ -97,21 +129,6 @@ const Index = () => {
             <span>PLAY</span>
           </button>
 
-          <div className="watch-later-container">
-            <div className="face">
-              <p className="v-index">II</p>
-              <p className="h-index">II</p>
-              <div className="hand">
-                <div className="hand">
-                  <div className="hour"></div>
-                  <div className="minute"></div>
-                  <div className="second"></div>
-                </div>
-              </div>
-            </div>
-            <span className="watch-later-text">Watch Later</span>
-          </div>
-
           <button onClick={handleClear} className="delete-button" title="Clear">
             <svg viewBox="0 0 448 512" className="delete-icon">
               <path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"></path>
@@ -124,11 +141,37 @@ const Index = () => {
             </svg>
             Share
           </button>
+
+          <div className="watch-later-container" onClick={handleWatchLater} title="Watch Later">
+            <div className="face">
+              <p className="v-index">II</p>
+              <p className="h-index">II</p>
+              <div className="hand">
+                <div className="hour"></div>
+                <div className="minute"></div>
+                <div className="second"></div>
+              </div>
+            </div>
+            <span className="watch-later-text">Watch Later</span>
+          </div>
         </div>
 
         {playingUrl && (
           <div className="w-full aspect-video bg-card rounded-lg overflow-hidden border border-border animate-scale-in">
-            {isYouTubeUrl(playingUrl) ? (
+            {isSubtitleFile(playingUrl) ? (
+              <div className="w-full h-full flex items-center justify-center p-8 text-foreground">
+                <div className="text-center space-y-4">
+                  <p className="text-xl">Subtitle file detected</p>
+                  <a 
+                    href={playingUrl} 
+                    download 
+                    className="inline-block px-6 py-3 bg-accent text-accent-foreground rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    Download Subtitle
+                  </a>
+                </div>
+              </div>
+            ) : isYouTubeUrl(playingUrl) ? (
               <iframe
                 key={playingUrl}
                 src={`https://www.youtube.com/embed/${getYouTubeVideoId(playingUrl)}?autoplay=1`}
