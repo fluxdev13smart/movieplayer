@@ -1,11 +1,40 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface PublicVideo {
+  id: string;
+  title: string;
+  original_url: string;
+  storage_path: string;
+  public_url: string;
+  created_at: string;
+}
 
 const Index = () => {
   const [videoUrl, setVideoUrl] = useState("");
   const [playingUrl, setPlayingUrl] = useState("");
   const [watchLater, setWatchLater] = useState<string[]>([]);
+  const [publicVideos, setPublicVideos] = useState<PublicVideo[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showPublicVideos, setShowPublicVideos] = useState(false);
   const { toast } = useToast();
+
+  // Fetch public videos
+  const fetchPublicVideos = async () => {
+    const { data, error } = await supabase
+      .from("public_videos")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (data && !error) {
+      setPublicVideos(data as PublicVideo[]);
+    }
+  };
+
+  useEffect(() => {
+    fetchPublicVideos();
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem("watchLater");
@@ -107,6 +136,55 @@ const Index = () => {
     });
   };
 
+  const handleUploadToCloud = async () => {
+    if (!videoUrl.trim()) {
+      toast({
+        title: "No URL provided",
+        description: "Please paste a video link first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isYouTubeUrl(videoUrl)) {
+      toast({
+        title: "YouTube not supported",
+        description: "Only direct video URLs can be uploaded to cloud",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("upload-video", {
+        body: { url: videoUrl, title: `Video ${new Date().toLocaleDateString()}` },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Video uploaded!",
+        description: "Video is now public and anyone can watch it",
+      });
+
+      // Refresh public videos list
+      fetchPublicVideos();
+      
+      // Play the uploaded video
+      setPlayingUrl(data.publicUrl);
+    } catch (err: any) {
+      toast({
+        title: "Upload failed",
+        description: err.message || "Could not upload video",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-4xl space-y-6 animate-fade-in">
@@ -154,7 +232,63 @@ const Index = () => {
             </div>
             <span className="watch-later-text">Watch Later</span>
           </div>
+
+          <button 
+            onClick={handleUploadToCloud} 
+            disabled={isUploading}
+            className="cloud-upload-button"
+            title="Upload to Cloud"
+          >
+            {isUploading ? (
+              <span className="loading-spinner"></span>
+            ) : (
+              <svg viewBox="0 0 24 24" className="cloud-icon" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 16v-8m0 0l-3 3m3-3l3 3" />
+                <path d="M20 16.7428C21.2215 15.734 22 14.2079 22 12.5C22 9.46243 19.5376 7 16.5 7C16.2815 7 16.0771 6.886 15.9661 6.69774C14.6621 4.48484 12.2544 3 9.5 3C5.35786 3 2 6.35786 2 10.5C2 12.5661 2.83545 14.4371 4.18695 15.7935" />
+              </svg>
+            )}
+            <span>{isUploading ? "Uploading..." : "Upload"}</span>
+          </button>
+
+          <button 
+            onClick={() => setShowPublicVideos(!showPublicVideos)} 
+            className="browse-button"
+            title="Browse Public Videos"
+          >
+            <svg viewBox="0 0 24 24" className="browse-icon" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+            </svg>
+            <span>Browse</span>
+          </button>
         </div>
+
+        {showPublicVideos && (
+          <div className="public-videos-grid">
+            <h3 className="text-foreground text-lg mb-4">Public Videos</h3>
+            {publicVideos.length === 0 ? (
+              <p className="text-muted-foreground">No public videos yet. Upload one!</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {publicVideos.map((video) => (
+                  <div 
+                    key={video.id} 
+                    className="video-card"
+                    onClick={() => {
+                      setPlayingUrl(video.public_url);
+                      setShowPublicVideos(false);
+                    }}
+                  >
+                    <div className="video-card-preview">
+                      <video src={video.public_url} muted preload="metadata" />
+                    </div>
+                    <p className="video-card-title">{video.title}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {playingUrl && (
           <div className="w-full aspect-video bg-card rounded-lg overflow-hidden border border-border animate-scale-in">
