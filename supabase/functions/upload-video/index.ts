@@ -5,6 +5,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper to fetch with timeout
+async function fetchWithTimeout(url: string, timeoutMs = 30000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, { 
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      }
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -23,13 +43,56 @@ Deno.serve(async (req) => {
 
     console.log("Downloading video from:", url);
 
-    // Fetch the video
-    const response = await fetch(url);
+    // Check if URL looks like a streamable video (not a huge file download)
+    const urlLower = url.toLowerCase();
+    const isLikelyLargeFile = urlLower.includes("1080p") || urlLower.includes("2160p") || 
+                              urlLower.includes("4k") || urlLower.endsWith(".mkv");
+    
+    if (isLikelyLargeFile) {
+      console.warn("Large file detected, may timeout");
+    }
+
+    // Fetch the video with timeout
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(url, 55000); // 55s timeout (edge functions have 60s limit)
+    } catch (fetchError) {
+      const errorMsg = fetchError instanceof Error ? fetchError.message : "Unknown error";
+      console.error("Fetch error:", errorMsg);
+      
+      if (errorMsg.includes("abort") || errorMsg.includes("timeout")) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Download timed out. The file may be too large or the server is slow. Try a smaller video or a direct .mp4 link." 
+          }),
+          { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: "Could not connect to the video server. The server may be blocking downloads or is unreachable." 
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (!response.ok) {
       console.error("Failed to fetch video:", response.status, response.statusText);
       return new Response(
-        JSON.stringify({ error: "Failed to download video from URL" }),
+        JSON.stringify({ error: `Server returned ${response.status}: ${response.statusText}` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check content length - limit to ~50MB for edge function memory
+    const contentLength = response.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > 50 * 1024 * 1024) {
+      return new Response(
+        JSON.stringify({ 
+          error: "File too large (max 50MB). Please use a smaller video or a streaming link." 
+        }),
+        { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
