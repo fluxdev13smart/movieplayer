@@ -345,13 +345,36 @@ const Index = () => {
               ) : (
                 <video
                   key={playingUrl}
+                  ref={videoRef}
                   controls
                   autoPlay
+                  onLoadedMetadata={() => {
+                    if (videoRef.current) videoRef.current.playbackRate = playbackRate;
+                  }}
                   className="w-full h-full"
                   src={playingUrl}
                 >
                   Your browser does not support the video tag.
                 </video>
+              )}
+
+              {/* Speed & skip controls (workaround when server blocks seeking) */}
+              {!isSubtitleFile(playingUrl) && !isYouTubeUrl(playingUrl) && (
+                <div className="speed-overlay">
+                  <button className="speed-btn" onClick={() => skip(-10)} title="Back 10s">-10s</button>
+                  <button className="speed-btn" onClick={() => skip(10)} title="Forward 10s">+10s</button>
+                  <button className="speed-btn" onClick={() => skip(60)} title="Forward 1 min">+1m</button>
+                  <div className="speed-divider" />
+                  {SPEEDS.map((s) => (
+                    <button
+                      key={s}
+                      className={`speed-btn ${playbackRate === s ? "active" : ""}`}
+                      onClick={() => setSpeed(s)}
+                    >
+                      {s}x
+                    </button>
+                  ))}
+                </div>
               )}
 
               {/* Language selector overlay */}
