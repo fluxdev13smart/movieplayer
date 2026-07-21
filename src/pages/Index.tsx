@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -29,7 +29,24 @@ const Index = () => {
   const [newLangName, setNewLangName] = useState("");
   const [newLangUrl, setNewLangUrl] = useState("");
   const [activeLang, setActiveLang] = useState<string>("Original");
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
+
+  const SPEEDS = [1, 1.5, 2, 4, 8, 16];
+
+  const setSpeed = (rate: number) => {
+    setPlaybackRate(rate);
+    if (videoRef.current) videoRef.current.playbackRate = rate;
+  };
+
+  const skip = (seconds: number) => {
+    const v = videoRef.current;
+    if (!v) return;
+    try {
+      v.currentTime = Math.max(0, Math.min((v.duration || Infinity), v.currentTime + seconds));
+    } catch {}
+  };
 
   // Fetch public videos
   const fetchPublicVideos = async () => {
@@ -328,13 +345,36 @@ const Index = () => {
               ) : (
                 <video
                   key={playingUrl}
+                  ref={videoRef}
                   controls
                   autoPlay
+                  onLoadedMetadata={() => {
+                    if (videoRef.current) videoRef.current.playbackRate = playbackRate;
+                  }}
                   className="w-full h-full"
                   src={playingUrl}
                 >
                   Your browser does not support the video tag.
                 </video>
+              )}
+
+              {/* Speed & skip controls (workaround when server blocks seeking) */}
+              {!isSubtitleFile(playingUrl) && !isYouTubeUrl(playingUrl) && (
+                <div className="speed-overlay">
+                  <button className="speed-btn" onClick={() => skip(-10)} title="Back 10s">-10s</button>
+                  <button className="speed-btn" onClick={() => skip(10)} title="Forward 10s">+10s</button>
+                  <button className="speed-btn" onClick={() => skip(60)} title="Forward 1 min">+1m</button>
+                  <div className="speed-divider" />
+                  {SPEEDS.map((s) => (
+                    <button
+                      key={s}
+                      className={`speed-btn ${playbackRate === s ? "active" : ""}`}
+                      onClick={() => setSpeed(s)}
+                    >
+                      {s}x
+                    </button>
+                  ))}
+                </div>
               )}
 
               {/* Language selector overlay */}
