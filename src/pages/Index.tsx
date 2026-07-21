@@ -302,38 +302,138 @@ const Index = () => {
         )}
 
         {playingUrl && (
-          <div className="w-full aspect-video bg-card rounded-lg overflow-hidden border border-border animate-scale-in">
-            {isSubtitleFile(playingUrl) ? (
-              <div className="w-full h-full flex items-center justify-center p-8 text-foreground">
-                <div className="text-center space-y-4">
-                  <p className="text-xl">Subtitle file detected</p>
-                  <a 
-                    href={playingUrl} 
-                    download 
-                    className="inline-block px-6 py-3 bg-accent text-accent-foreground rounded-lg hover:opacity-90 transition-opacity"
+          <div className="video-player-wrapper animate-scale-in">
+            <div className="video-player-frame">
+              {isSubtitleFile(playingUrl) ? (
+                <div className="w-full h-full flex items-center justify-center p-8 text-foreground">
+                  <div className="text-center space-y-4">
+                    <p className="text-xl">Subtitle file detected</p>
+                    <a
+                      href={playingUrl}
+                      download
+                      className="inline-block px-6 py-3 bg-accent text-accent-foreground rounded-lg hover:opacity-90 transition-opacity"
+                    >
+                      Download Subtitle
+                    </a>
+                  </div>
+                </div>
+              ) : isYouTubeUrl(playingUrl) ? (
+                <iframe
+                  key={playingUrl}
+                  src={`https://www.youtube.com/embed/${getYouTubeVideoId(playingUrl)}?autoplay=1`}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <video
+                  key={playingUrl}
+                  controls
+                  autoPlay
+                  className="w-full h-full"
+                  src={playingUrl}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              )}
+
+              {/* Language selector overlay */}
+              {!isSubtitleFile(playingUrl) && !isYouTubeUrl(playingUrl) && (
+                <div className="lang-overlay">
+                  <button
+                    className="lang-button"
+                    onClick={() => setShowLangMenu(!showLangMenu)}
+                    title="Change language"
                   >
-                    Download Subtitle
-                  </a>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lang-icon">
+                      <path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6" />
+                    </svg>
+                    <span>{activeLang}</span>
+                  </button>
+
+                  {showLangMenu && (
+                    <div className="lang-menu">
+                      <button
+                        className={`lang-menu-item ${activeLang === "Original" ? "active" : ""}`}
+                        onClick={() => {
+                          setPlayingUrl(videoUrl);
+                          setActiveLang("Original");
+                          setShowLangMenu(false);
+                        }}
+                      >
+                        Original
+                      </button>
+                      {languageTracks.map((track) => (
+                        <button
+                          key={track.lang}
+                          className={`lang-menu-item ${activeLang === track.lang ? "active" : ""}`}
+                          onClick={() => {
+                            setPlayingUrl(track.url);
+                            setActiveLang(track.lang);
+                            setShowLangMenu(false);
+                          }}
+                        >
+                          {track.lang}
+                        </button>
+                      ))}
+                      <button
+                        className="lang-menu-item add"
+                        onClick={() => {
+                          setShowAddLang(true);
+                          setShowLangMenu(false);
+                        }}
+                      >
+                        + Add language
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Add language modal */}
+            {showAddLang && (
+              <div className="add-lang-modal">
+                <input
+                  type="text"
+                  className="custom-input"
+                  placeholder="Language name (e.g. Spanish)"
+                  value={newLangName}
+                  onChange={(e) => setNewLangName(e.target.value)}
+                />
+                <input
+                  type="url"
+                  className="custom-input"
+                  placeholder="Video URL for that language"
+                  value={newLangUrl}
+                  onChange={(e) => setNewLangUrl(e.target.value)}
+                />
+                <div className="flex gap-2">
+                  <button
+                    className="browse-button"
+                    onClick={() => {
+                      if (newLangName.trim() && newLangUrl.trim()) {
+                        setLanguageTracks([
+                          ...languageTracks,
+                          { lang: newLangName.trim(), url: newLangUrl.trim() },
+                        ]);
+                        setNewLangName("");
+                        setNewLangUrl("");
+                        setShowAddLang(false);
+                        toast({ title: "Language added" });
+                      }
+                    }}
+                  >
+                    Add
+                  </button>
+                  <button
+                    className="browse-button"
+                    onClick={() => setShowAddLang(false)}
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
-            ) : isYouTubeUrl(playingUrl) ? (
-              <iframe
-                key={playingUrl}
-                src={`https://www.youtube.com/embed/${getYouTubeVideoId(playingUrl)}?autoplay=1`}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            ) : (
-              <video
-                key={playingUrl}
-                controls
-                autoPlay
-                className="w-full h-full"
-                src={playingUrl}
-              >
-                Your browser does not support the video tag.
-              </video>
             )}
           </div>
         )}
