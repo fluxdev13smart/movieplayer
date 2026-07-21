@@ -11,6 +11,11 @@ interface PublicVideo {
   created_at: string;
 }
 
+interface LanguageTrack {
+  lang: string;
+  url: string;
+}
+
 const Index = () => {
   const [videoUrl, setVideoUrl] = useState("");
   const [playingUrl, setPlayingUrl] = useState("");
@@ -18,6 +23,12 @@ const Index = () => {
   const [publicVideos, setPublicVideos] = useState<PublicVideo[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showPublicVideos, setShowPublicVideos] = useState(false);
+  const [languageTracks, setLanguageTracks] = useState<LanguageTrack[]>([]);
+  const [showLangMenu, setShowLangMenu] = useState(false);
+  const [showAddLang, setShowAddLang] = useState(false);
+  const [newLangName, setNewLangName] = useState("");
+  const [newLangUrl, setNewLangUrl] = useState("");
+  const [activeLang, setActiveLang] = useState<string>("Original");
   const { toast } = useToast();
 
   // Fetch public videos
