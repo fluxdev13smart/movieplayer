@@ -29,7 +29,24 @@ const Index = () => {
   const [newLangName, setNewLangName] = useState("");
   const [newLangUrl, setNewLangUrl] = useState("");
   const [activeLang, setActiveLang] = useState<string>("Original");
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
+
+  const SPEEDS = [1, 1.5, 2, 4, 8, 16];
+
+  const setSpeed = (rate: number) => {
+    setPlaybackRate(rate);
+    if (videoRef.current) videoRef.current.playbackRate = rate;
+  };
+
+  const skip = (seconds: number) => {
+    const v = videoRef.current;
+    if (!v) return;
+    try {
+      v.currentTime = Math.max(0, Math.min((v.duration || Infinity), v.currentTime + seconds));
+    } catch {}
+  };
 
   // Fetch public videos
   const fetchPublicVideos = async () => {
